@@ -2,8 +2,9 @@ import random
 from faker import Faker
 fake = Faker()
 
-def pets_create_payload():
-    pet_id = random.randint(9182733, 123123123123)
+def pets_create_payload(pet_id=None):
+    if pet_id is None:
+        pet_id = random.randint(9182733, 123123123123)
     category_id=random.randint(9182733, 123123123123)
     name_category=fake.word()
     name=fake.name()
@@ -30,5 +31,5 @@ def pets_create_payload():
     ],
     "status": status
     }
-    
+
     return payload

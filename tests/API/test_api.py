@@ -1,5 +1,4 @@
 import requests
-import pytest
 from jsonschema import validate
 from schemas.schemas import pet_create_and_get_schema
 from data.pets import pets_create_payload
@@ -81,7 +80,7 @@ def test_update_pet():
     assert response.status_code == 200
     validate(data, schema=pet_create_and_get_schema)
 
-    payload_put=pets_create_payload()
+    payload_put=pets_create_payload(pet_id=payload["id"])
 
     response_put=requests.put('https://petstore.swagger.io/v2/pet',json=payload_put)
 
@@ -89,7 +88,7 @@ def test_update_pet():
     assert response_put.status_code == 200
     validate(data_put, schema=pet_create_and_get_schema)
 
-    assert data_put["id"] == payload_put["id"]
+    assert data_put["id"] == payload["id"]
     assert data_put["category"] == payload_put["category"]
     assert data_put["name"] == payload_put["name"]
     assert data_put["photoUrls"] == payload_put["photoUrls"]
@@ -144,7 +143,7 @@ def test_negative_get():
 
     assert response_get.status_code==404
     schema_get_error_response=load_schema('error_get_schema.json')
-    validate(data_delete, schema=schema_get_error_response)
+    validate(data_get, schema=schema_get_error_response)
 
     assert data_get['type']=='error'
     assert data_get['message']=='Pet not found'
