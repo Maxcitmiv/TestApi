@@ -1,0 +1,20 @@
+[project]
+name = "testapi"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Maxcitmiv",email = "maksmaks5213@gmail.com"}
+]
+requires-python = "^3.14"
+dependencies = [
+    "requests (>=2.33.1,<3.0.0)",
+    "pytest (>=9.0.3,<10.0.0)",
+    "pydantic (>=2.13.3,<3.0.0)",
+    "jsonschema (>=4.26.0,<5.0.0)",
+    "faker (>=40.15.0,<41.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
