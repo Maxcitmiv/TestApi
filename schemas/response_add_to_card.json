@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "success": {
+            "type": "boolean"
+        },
+        "message": {
+            "type": "string"
+        },
+        "updatetopcartsectionhtml": {
+            "type": "string"
+        },
+        "updateflyoutcartsectionhtml": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "success",
+        "message",
+        "updatetopcartsectionhtml",
+        "updateflyoutcartsectionhtml"
+    ]
+}

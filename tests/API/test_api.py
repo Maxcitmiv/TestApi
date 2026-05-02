@@ -3,7 +3,9 @@ from jsonschema import validate
 from schemas.schemas import pet_create_and_get_schema
 from data.pets import pets_create_payload
 from utils.schema_loader import load_schema
+import allure
 
+@allure.title('Создание рандомного питомца')
 def test_create_pets_random():
     response=requests.post('https://petstore.swagger.io/v2/pet',
     json={
