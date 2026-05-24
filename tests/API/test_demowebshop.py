@@ -1,4 +1,5 @@
 import requests
+import pytest
 from jsonschema import validate
 from selene import browser, have, be
 
@@ -12,6 +13,8 @@ from utils.demowebshop import (
 from utils.api_client import ApiClient
 from utils.schema_loader import load_schema
 
+
+pytestmark = pytest.mark.ui
 
 notebook_product_card = browser.element(LAPTOP_PRODUCT_CARD_SELECTOR)
 

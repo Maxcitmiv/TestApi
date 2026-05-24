@@ -118,3 +118,4 @@ allure-results/
 allure-report/
 .ruff_cache/
 .env.*
+!.env.example

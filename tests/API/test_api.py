@@ -1,4 +1,5 @@
 import allure
+import pytest
 from jsonschema import validate
 
 from data.pets import pets_create_payload
@@ -6,6 +7,9 @@ from models.pets import DeletePetResponse, PetErrorResponse, PetRequest, PetResp
 from schemas.schemas import pet_create_and_get_schema
 from utils.api_client import ApiClient
 from utils.schema_loader import load_schema
+
+
+pytestmark = pytest.mark.api
 
 
 def create_pet(api_client: ApiClient, payload: PetRequest) -> PetResponse:
