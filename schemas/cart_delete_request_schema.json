@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "minProperties": 3,
+  "required": [
+    "removefromcart",
+    "updatecart"
+  ],
+  "properties": {
+    "removefromcart": {
+      "type": "string"
+    },
+    "updatecart": {
+      "type": "string",
+      "const": "Update shopping cart"
+    }
+  },
+  "patternProperties": {
+    "^itemquantity\\d+$": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}

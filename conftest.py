@@ -1,15 +1,22 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
+from collections.abc import Iterator
 from typing import Any
 
 import allure
 import pytest
 import requests
-import logging
+from selene import browser
+
+from utils.api_client import ApiClient
 
 logger = logging.getLogger("api")
+
+PETSTORE_BASE_URL = "https://petstore.swagger.io/v2"
+DEMO_WEBSHOP_BASE_URL = "https://demowebshop.tricentis.com"
 
 
 def _to_text(value: Any) -> str:
@@ -31,8 +38,10 @@ def _headers_to_text(headers: Any) -> str:
         return _to_text(headers)
 
 
-def _attach_request(kwargs: dict[str, Any]) -> None:
+def _attach_request(method: str, url: str, kwargs: dict[str, Any]) -> None:
     request_meta = {
+        "method": method.upper(),
+        "url": url,
         "params": kwargs.get("params"),
         "timeout": kwargs.get("timeout"),
         "allow_redirects": kwargs.get("allow_redirects"),
@@ -49,13 +58,13 @@ def _attach_request(kwargs: dict[str, Any]) -> None:
             name="request_headers",
             attachment_type=allure.attachment_type.TEXT,
         )
-    if "json" in kwargs:
+    if kwargs.get("json") is not None:
         allure.attach(
             _to_text(kwargs["json"]),
             name="request_json_body",
             attachment_type=allure.attachment_type.JSON,
         )
-    if "data" in kwargs:
+    if kwargs.get("data") is not None:
         allure.attach(
             _to_text(kwargs["data"]),
             name="request_data_body",
@@ -105,7 +114,7 @@ def _attach_response(response: requests.Response, duration_ms: float) -> None:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def allure_requests_logging() -> None:
+def allure_requests_logging() -> Iterator[None]:
     original_request = requests.sessions.Session.request
 
     def logged_request(
@@ -130,13 +139,13 @@ def allure_requests_logging() -> None:
                 status,
                 duration_ms,
             )
-            if "json" in kwargs:
+            if kwargs.get("json") is not None:
                 logger.info("Request JSON: %s", kwargs["json"])
 
             if response is not None:
                 logger.info("Response body: %s", response.text)
             with allure.step(f"HTTP {method.upper()} {url} -> {status}"):
-                _attach_request(kwargs)
+                _attach_request(method, url, kwargs)
                 if response is not None:
                     _attach_response(response, duration_ms)
                 if error is not None:
@@ -149,3 +158,17 @@ def allure_requests_logging() -> None:
     requests.sessions.Session.request = logged_request
     yield
     requests.sessions.Session.request = original_request
+
+
+@pytest.fixture()
+def petstore_api() -> ApiClient:
+    browser.config.base_url = PETSTORE_BASE_URL
+
+    return ApiClient(browser.config.base_url)
+
+
+@pytest.fixture()
+def demowebshop_api() -> ApiClient:
+    browser.config.base_url = DEMO_WEBSHOP_BASE_URL
+
+    return ApiClient(browser.config.base_url)

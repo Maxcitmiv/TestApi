@@ -115,3 +115,6 @@ dmypy.json
 .pytype/
 cython_debug/
 allure-results/
+allure-report/
+.ruff_cache/
+.env.*

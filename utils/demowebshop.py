@@ -2,19 +2,18 @@ import requests
 from bs4 import BeautifulSoup
 
 from models.demowebshop import AddToCartResponse
+from utils.api_client import ApiClient
 
 
-DEMO_WEBSHOP_BASE_URL = "https://demowebshop.tricentis.com"
+ADD_LAPTOP_TO_CART_ENDPOINT = "/addproducttocart/catalog/31/1/1"
+CART_ENDPOINT = "/cart"
 LAPTOP_PRODUCT_CARD_SELECTOR = '[href="/141-inch-laptop"].product-name'
 
 
 def add_laptop_to_cart(
-    session: requests.Session | None = None,
+    api_client: ApiClient,
 ) -> tuple[requests.Response, dict[str, object], AddToCartResponse]:
-    client = session or requests
-    response = client.post(
-        url=f"{DEMO_WEBSHOP_BASE_URL}/addproducttocart/catalog/31/1/1"
-    )
+    response = api_client.post(ADD_LAPTOP_TO_CART_ENDPOINT)
     response_data = response.json()
     response_model = AddToCartResponse.model_validate(response_data)
 
