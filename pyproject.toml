@@ -32,3 +32,6 @@ markers = [
     "api: API-only tests",
     "ui: tests that use browser and can run in Selenoid",
 ]
+
+[tool.poetry]
+package-mode = false
