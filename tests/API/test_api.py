@@ -1,177 +1,170 @@
+import allure
 import requests
 from jsonschema import validate
-from schemas.schemas import pet_create_and_get_schema
+
 from data.pets import pets_create_payload
+from models.pets import DeletePetResponse, PetErrorResponse, PetRequest, PetResponse
+from schemas.schemas import pet_create_and_get_schema
 from utils.schema_loader import load_schema
-import allure
 
-@allure.title('Создание рандомного питомца')
-def test_create_pets_random():
-    response=requests.post('https://petstore.swagger.io/v2/pet',
-    json={
-    "id": 0,
-    "category": {
-        "id": 0,
-        "name": "string"
-    },
-    "name": "doggie",
-    "photoUrls": [
-        "string"
-    ],
-    "tags": [
-        {
-            "id": 0,
-            "name": "string"
-        }
-    ],
-    "status": "available"
-})
-    assert response.status_code==200
-    validate(response.json(), schema=pet_create_and_get_schema)
 
-def test_create_pet():
+PETSTORE_PET_URL = "https://petstore.swagger.io/v2/pet"
 
-    payload = pets_create_payload()
 
-    response = requests.post('https://petstore.swagger.io/v2/pet',json=payload)
-
-    data = response.json()
-
+def create_pet(payload: PetRequest) -> PetResponse:
+    response = requests.post(PETSTORE_PET_URL, json=payload.model_dump(mode="json"))
     assert response.status_code == 200
 
-    validate(data, schema=pet_create_and_get_schema)
+    response_data = response.json()
+    response_model = PetResponse.model_validate(response_data)
 
-    assert data["id"] == payload["id"]
-    assert data["category"] == payload["category"]
-    assert data["name"] == payload["name"]
-    assert data["photoUrls"] == payload["photoUrls"]
-    assert data["tags"] == payload["tags"]
-    assert data["status"] == payload["status"]
+    validate(response_data, schema=pet_create_and_get_schema)
+
+    return response_model
+
+
+@allure.title("Создание рандомного питомца")
+def test_create_pets_random():
+    payload = pets_create_payload()
+
+    response_model = create_pet(payload)
+
+    assert response_model.id == payload.id
+    assert response_model.category == payload.category
+    assert response_model.name == payload.name
+    assert response_model.photoUrls == payload.photoUrls
+    assert response_model.tags == payload.tags
+    assert response_model.status == payload.status
+
+
+def test_create_pet():
+    payload = pets_create_payload()
+
+    response_model = create_pet(payload)
+
+    assert response_model.id == payload.id
+    assert response_model.category == payload.category
+    assert response_model.name == payload.name
+    assert response_model.photoUrls == payload.photoUrls
+    assert response_model.tags == payload.tags
+    assert response_model.status == payload.status
+
 
 def test_get_pet():
     payload = pets_create_payload()
 
-    response = requests.post('https://petstore.swagger.io/v2/pet',json=payload)
+    create_pet(payload)
 
-    data = response.json()
-
-    assert response.status_code == 200
-    validate(data, schema=pet_create_and_get_schema)
-
-    response_get=requests.get(f'https://petstore.swagger.io/v2/pet/{payload["id"]}')
+    response_get = requests.get(f"{PETSTORE_PET_URL}/{payload.id}")
+    assert response_get.status_code == 200
 
     data_get = response_get.json()
+    response_get_model = PetResponse.model_validate(data_get)
 
-    assert response_get.status_code == 200
     validate(data_get, schema=pet_create_and_get_schema)
 
-    assert data_get["id"] == payload["id"]
-    assert data_get["category"] == payload["category"]
-    assert data_get["name"] == payload["name"]
-    assert data_get["photoUrls"] == payload["photoUrls"]
-    assert data_get["tags"] == payload["tags"]
-    assert data_get["status"] == payload["status"]
+    assert response_get_model.id == payload.id
+    assert response_get_model.category == payload.category
+    assert response_get_model.name == payload.name
+    assert response_get_model.photoUrls == payload.photoUrls
+    assert response_get_model.tags == payload.tags
+    assert response_get_model.status == payload.status
+
 
 def test_update_pet():
     payload = pets_create_payload()
 
-    response = requests.post('https://petstore.swagger.io/v2/pet',json=payload)
+    create_pet(payload)
 
-    data = response.json()
+    payload_put = pets_create_payload(pet_id=payload.id)
 
-    assert response.status_code == 200
-    validate(data, schema=pet_create_and_get_schema)
-
-    payload_put=pets_create_payload(pet_id=payload["id"])
-
-    response_put=requests.put('https://petstore.swagger.io/v2/pet',json=payload_put)
+    response_put = requests.put(
+        PETSTORE_PET_URL,
+        json=payload_put.model_dump(mode="json"),
+    )
+    assert response_put.status_code == 200
 
     data_put = response_put.json()
-    assert response_put.status_code == 200
+    response_put_model = PetResponse.model_validate(data_put)
+
     validate(data_put, schema=pet_create_and_get_schema)
 
-    assert data_put["id"] == payload["id"]
-    assert data_put["category"] == payload_put["category"]
-    assert data_put["name"] == payload_put["name"]
-    assert data_put["photoUrls"] == payload_put["photoUrls"]
-    assert data_put["tags"] == payload_put["tags"]
-    assert data_put["status"] == payload_put["status"]
+    assert response_put_model.id == payload.id
+    assert response_put_model.category == payload_put.category
+    assert response_put_model.name == payload_put.name
+    assert response_put_model.photoUrls == payload_put.photoUrls
+    assert response_put_model.tags == payload_put.tags
+    assert response_put_model.status == payload_put.status
+
 
 def test_delete_pet():
     payload = pets_create_payload()
 
-    response = requests.post('https://petstore.swagger.io/v2/pet', json=payload)
+    create_pet(payload)
 
-    data = response.json()
-
-    assert response.status_code == 200
-    validate(data, schema=pet_create_and_get_schema)
-
-    response_delete=requests.delete(f'https://petstore.swagger.io/v2/pet/{payload["id"]}')
-    data_delete = response_delete.json()
-
+    response_delete = requests.delete(f"{PETSTORE_PET_URL}/{payload.id}")
     assert response_delete.status_code == 200
-    schema_delete_response=load_schema('delete_response_schema.json')
+
+    data_delete = response_delete.json()
+    delete_response_model = DeletePetResponse.model_validate(data_delete)
+
+    schema_delete_response = load_schema("delete_response_schema.json")
 
     validate(data_delete, schema=schema_delete_response)
 
-    assert data_delete['type']=='unknown'
-    assert data_delete['message']==str(payload['id'])
+    assert delete_response_model.type == "unknown"
+    assert delete_response_model.message == str(payload.id)
+
 
 def test_negative_get():
     payload = pets_create_payload()
 
-    response = requests.post('https://petstore.swagger.io/v2/pet', json=payload)
+    create_pet(payload)
 
-    data = response.json()
-
-    assert response.status_code == 200
-    validate(data, schema=pet_create_and_get_schema)
-
-    response_delete=requests.delete(f'https://petstore.swagger.io/v2/pet/{payload["id"]}')
-    data_delete = response_delete.json()
-
+    response_delete = requests.delete(f"{PETSTORE_PET_URL}/{payload.id}")
     assert response_delete.status_code == 200
-    schema_delete_response=load_schema('delete_response_schema.json')
+
+    data_delete = response_delete.json()
+    delete_response_model = DeletePetResponse.model_validate(data_delete)
+
+    schema_delete_response = load_schema("delete_response_schema.json")
 
     validate(data_delete, schema=schema_delete_response)
 
-    assert data_delete['type']=='unknown'
-    assert data_delete['message']==str(payload['id'])
+    assert delete_response_model.type == "unknown"
+    assert delete_response_model.message == str(payload.id)
 
-    response_get=requests.get(f'https://petstore.swagger.io/v2/pet/{payload["id"]}')
+    response_get = requests.get(f"{PETSTORE_PET_URL}/{payload.id}")
+    assert response_get.status_code == 404
 
     data_get = response_get.json()
+    error_response_model = PetErrorResponse.model_validate(data_get)
 
-    assert response_get.status_code==404
-    schema_get_error_response=load_schema('error_get_schema.json')
+    schema_get_error_response = load_schema("error_get_schema.json")
     validate(data_get, schema=schema_get_error_response)
 
-    assert data_get['type']=='error'
-    assert data_get['message']=='Pet not found'
+    assert error_response_model.type == "error"
+    assert error_response_model.message == "Pet not found"
+
 
 def test_delete_error():
-
     payload = pets_create_payload()
 
-    response = requests.post('https://petstore.swagger.io/v2/pet', json=payload)
+    create_pet(payload)
 
-    data = response.json()
-
-    assert response.status_code == 200
-    validate(data, schema=pet_create_and_get_schema)
-
-    response_delete=requests.delete(f'https://petstore.swagger.io/v2/pet/{payload["id"]}')
-    data_delete = response_delete.json()
-
+    response_delete = requests.delete(f"{PETSTORE_PET_URL}/{payload.id}")
     assert response_delete.status_code == 200
-    schema_delete_response=load_schema('delete_response_schema.json')
+
+    data_delete = response_delete.json()
+    delete_response_model = DeletePetResponse.model_validate(data_delete)
+
+    schema_delete_response = load_schema("delete_response_schema.json")
 
     validate(data_delete, schema=schema_delete_response)
 
-    assert data_delete['type']=='unknown'
-    assert data_delete['message']==str(payload['id'])
+    assert delete_response_model.type == "unknown"
+    assert delete_response_model.message == str(payload.id)
 
-    response_delete_2=requests.delete(f'https://petstore.swagger.io/v2/pet/{payload["id"]}')
-    assert response_delete_2.status_code==404
+    response_delete_2 = requests.delete(f"{PETSTORE_PET_URL}/{payload.id}")
+    assert response_delete_2.status_code == 404
     assert not response_delete_2.content

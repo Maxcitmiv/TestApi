@@ -1,55 +1,64 @@
 import requests
-from utils.schema_loader import load_schema
 from jsonschema import validate
 from selene import browser, have, be
-from bs4 import BeautifulSoup
-notebook_product_card=browser.element('[href="/141-inch-laptop"].product-name')
 
-def test_add_to_card_one_buy():
-    response_add_to_card_one_buy = requests.post(url='https://demowebshop.tricentis.com/addproducttocart/catalog/31/1/1')
+from utils.demowebshop import (
+    DEMO_WEBSHOP_BASE_URL,
+    LAPTOP_PRODUCT_CARD_SELECTOR,
+    add_laptop_to_cart,
+    get_cart_item_id,
+    get_customer_cookie,
+)
+from utils.schema_loader import load_schema
 
-    assert response_add_to_card_one_buy.status_code == 200
 
-    schema=load_schema('response_add_to_card.json')
-    response_data=response_add_to_card_one_buy.json()
-    validate(response_data,schema)
-    assert response_data['success'] == True
+notebook_product_card = browser.element(LAPTOP_PRODUCT_CARD_SELECTOR)
 
-    cookies_user=response_add_to_card_one_buy.cookies.get('Nop.customer')
-    browser.open('https://demowebshop.tricentis.com/cart')
-    browser.driver.add_cookie({'name': 'Nop.customer', 'value': cookies_user})
+
+def test_add_to_cart_one_item():
+    response, response_data, response_model = add_laptop_to_cart()
+
+    assert response.status_code == 200
+
+    schema = load_schema("response_add_to_card.json")
+    validate(response_data, schema)
+    assert response_model.success is True
+
+    customer_cookie = get_customer_cookie(response)
+    browser.open(f"{DEMO_WEBSHOP_BASE_URL}/cart")
+    browser.driver.add_cookie({"name": "Nop.customer", "value": customer_cookie})
     browser.driver.refresh()
-    notebook_product_card.should(have.text('14.1-inch Laptop'))
+    notebook_product_card.should(have.text("14.1-inch Laptop"))
 
-def test_delete():
-    session=requests.Session()
-    response_add_to_card_one_buy = session.post(url='https://demowebshop.tricentis.com/addproducttocart/catalog/31/1/1')
 
-    assert response_add_to_card_one_buy.status_code == 200
+def test_delete_item_from_cart():
+    session = requests.Session()
+    response, response_data, response_model = add_laptop_to_cart(session)
 
-    schema=load_schema('response_add_to_card.json')
-    response_data=response_add_to_card_one_buy.json()
-    validate(response_data,schema)
-    assert response_data['success'] == True
+    assert response.status_code == 200
 
-    cookies_user = response_add_to_card_one_buy.cookies.get('Nop.customer')
-    browser.open('https://demowebshop.tricentis.com/cart')
-    browser.driver.add_cookie({'name': 'Nop.customer', 'value': cookies_user})
+    schema = load_schema("response_add_to_card.json")
+    validate(response_data, schema)
+    assert response_model.success is True
+
+    customer_cookie = get_customer_cookie(response)
+    browser.open(f"{DEMO_WEBSHOP_BASE_URL}/cart")
+    browser.driver.add_cookie({"name": "Nop.customer", "value": customer_cookie})
     browser.driver.refresh()
-    browser.element('[href="/141-inch-laptop"].product-name').should(have.text('14.1-inch Laptop'))
+    browser.element(LAPTOP_PRODUCT_CARD_SELECTOR).should(have.text("14.1-inch Laptop"))
 
-    response_get = session.get("https://demowebshop.tricentis.com/cart")
+    response_get = session.get(f"{DEMO_WEBSHOP_BASE_URL}/cart")
 
-    soup = BeautifulSoup(response_get.text, "html.parser")
+    value = get_cart_item_id(response_get.text)
 
-    checkbox = soup.find("input", {
-        "type": "checkbox",
-        "name": "removefromcart"
-    })
-
-    value = checkbox["value"]
-
-    response_delete=session.post('https://demowebshop.tricentis.com/cart',data={"removefromcart": value, f'itemquantity{value}': 1, 'updatecart': 'Update shopping cart'})
+    response_delete = session.post(
+        f"{DEMO_WEBSHOP_BASE_URL}/cart",
+        data={
+            "removefromcart": value,
+            f"itemquantity{value}": 1,
+            "updatecart": "Update shopping cart",
+        },
+    )
     assert response_delete.status_code == 200
     browser.driver.refresh()
     notebook_product_card.should(be.not_.in_dom)
