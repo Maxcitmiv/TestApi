@@ -90,6 +90,4 @@ HEADLESS=false
 
 ### Видео прогона теста
 
-### [Selenoid video](https://selenoid.autotests.cloud/video/test_delete_item_from_cart.mp4)
-
 ![Видео прогона test_delete_item_from_cart](images/screenshots/test_delete_item_from_cart.gif)
