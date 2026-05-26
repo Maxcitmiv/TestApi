@@ -30,8 +30,7 @@ notebook_product_card = browser.element(LAPTOP_PRODUCT_CARD_SELECTOR)
 @allure.severity(allure.severity_level.CRITICAL)
 @allure.tag("api", "ui", "demowebshop", "корзина")
 def test_add_to_cart_one_item(demowebshop_api: ApiClient):
-    with allure.step("Добавить товар в корзину через API"):
-        response, response_data, response_model = add_laptop_to_cart(demowebshop_api)
+    response, response_data, response_model = add_laptop_to_cart(demowebshop_api)
 
     with allure.step("Проверить статус код, схему и значение success в API-ответе"):
         assert response.status_code == 200
@@ -62,8 +61,7 @@ def test_add_to_cart_one_item(demowebshop_api: ApiClient):
 def test_delete_item_from_cart(demowebshop_api: ApiClient):
     session = requests.Session()
     session_api = demowebshop_api.with_session(session)
-    with allure.step("Добавить товар в корзину через API"):
-        response, response_data, response_model = add_laptop_to_cart(session_api)
+    response, response_data, response_model = add_laptop_to_cart(session_api)
 
     with allure.step("Проверить статус код, схему и значение success в API-ответе"):
         assert response.status_code == 200

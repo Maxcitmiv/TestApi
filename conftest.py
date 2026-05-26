@@ -7,6 +7,7 @@ import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import allure
 import pytest
@@ -93,87 +94,72 @@ def _to_text(value: Any) -> str:
     return str(value)
 
 
-def _headers_to_text(headers: Any) -> str:
+def _truncate(value: str, limit: int = 10_000) -> str:
+    if len(value) <= limit:
+        return value
+
+    return f"{value[:limit]}\n... truncated ..."
+
+
+def _headers_to_dict(headers: Any) -> dict[str, str]:
     if not headers:
-        return ""
+        return {}
     try:
-        return "\n".join(f"{key}: {value}" for key, value in headers.items())
+        return {str(key): str(value) for key, value in headers.items()}
     except AttributeError:
-        return _to_text(headers)
+        return {"raw": _to_text(headers)}
+
+
+def _request_endpoint(url: str) -> str:
+    parsed_url = urlparse(url)
+    endpoint = parsed_url.path or url
+    if parsed_url.query:
+        endpoint = f"{endpoint}?{parsed_url.query}"
+
+    return endpoint
 
 
 def _attach_request(method: str, url: str, kwargs: dict[str, Any]) -> None:
-    request_meta = {
+    request_data = {
         "method": method.upper(),
         "url": url,
+        "endpoint": _request_endpoint(url),
+        "headers": _headers_to_dict(kwargs.get("headers")),
         "params": kwargs.get("params"),
         "timeout": kwargs.get("timeout"),
         "allow_redirects": kwargs.get("allow_redirects"),
+        "json_body": kwargs.get("json"),
+        "data_body": kwargs.get("data"),
     }
     allure.attach(
-        json.dumps(request_meta, ensure_ascii=False, indent=2, default=str),
-        name="request_meta",
+        json.dumps(request_data, ensure_ascii=False, indent=2, default=str),
+        name="request",
         attachment_type=allure.attachment_type.JSON,
     )
-    headers_text = _headers_to_text(kwargs.get("headers"))
-    if headers_text:
-        allure.attach(
-            headers_text,
-            name="request_headers",
-            attachment_type=allure.attachment_type.TEXT,
-        )
-    if kwargs.get("json") is not None:
-        allure.attach(
-            _to_text(kwargs["json"]),
-            name="request_json_body",
-            attachment_type=allure.attachment_type.JSON,
-        )
-    if kwargs.get("data") is not None:
-        allure.attach(
-            _to_text(kwargs["data"]),
-            name="request_data_body",
-            attachment_type=allure.attachment_type.TEXT,
-        )
 
 
 def _attach_response(response: requests.Response, duration_ms: float) -> None:
-    response_meta = {
-        "status_code": response.status_code,
-        "reason": response.reason,
-        "duration_ms": duration_ms,
-    }
-    allure.attach(
-        json.dumps(response_meta, ensure_ascii=False, indent=2, default=str),
-        name="response_meta",
-        attachment_type=allure.attachment_type.JSON,
-    )
-    headers_text = _headers_to_text(response.headers)
-    if headers_text:
-        allure.attach(
-            headers_text,
-            name="response_headers",
-            attachment_type=allure.attachment_type.TEXT,
-        )
-
+    response_body: Any
     content_type = response.headers.get("content-type", "")
     if "application/json" in content_type:
         try:
-            allure.attach(
-                json.dumps(response.json(), ensure_ascii=False, indent=2, default=str),
-                name="response_body",
-                attachment_type=allure.attachment_type.JSON,
-            )
-            return
+            response_body = response.json()
         except ValueError:
-            pass
+            response_body = _truncate(response.text)
+    else:
+        response_body = _truncate(response.text)
 
-    body = response.text
-    if len(body) > 10_000:
-        body = f"{body[:10_000]}\n... response body truncated ..."
+    response_data = {
+        "status_code": response.status_code,
+        "reason": response.reason,
+        "duration_ms": duration_ms,
+        "headers": _headers_to_dict(response.headers),
+        "body": response_body,
+    }
     allure.attach(
-        body,
-        name="response_body",
-        attachment_type=allure.attachment_type.TEXT,
+        json.dumps(response_data, ensure_ascii=False, indent=2, default=str),
+        name="response",
+        attachment_type=allure.attachment_type.JSON,
     )
 
 
@@ -276,8 +262,10 @@ def allure_requests_logging() -> Iterator[None]:
                 logger.info("Request JSON: %s", kwargs["json"])
 
             if response is not None:
-                logger.info("Response body: %s", response.text)
-            with allure.step(f"HTTP {method.upper()} {url} -> {status}"):
+                logger.info("Response body: %s", _truncate(response.text, limit=2_000))
+            with allure.step(
+                f"HTTP {method.upper()} {_request_endpoint(url)} -> {status}"
+            ):
                 _attach_request(method, url, kwargs)
                 if response is not None:
                     _attach_response(response, duration_ms)
@@ -293,6 +281,13 @@ def allure_requests_logging() -> Iterator[None]:
     requests.sessions.Session.request = original_request
 
 
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[Any]) -> Any:
+    outcome = yield
+    report = outcome.get_result()
+    setattr(item, f"rep_{report.when}", report)
+
+
 @pytest.fixture()
 def petstore_api() -> ApiClient:
     browser.config.base_url = PETSTORE_BASE_URL
@@ -306,10 +301,14 @@ def demowebshop_api(request: pytest.FixtureRequest) -> Iterator[ApiClient]:
 
     yield ApiClient(browser.config.base_url)
 
-    attach_screenshot()
-    attach_console_log()
-    attach_page_source()
-    browser.quit()
+    call_report = getattr(request.node, "rep_call", None)
+    test_failed = bool(call_report and call_report.failed)
+    if test_failed:
+        with allure.step("Приложить артефакты браузера"):
+            attach_screenshot()
+            attach_console_log()
+            attach_page_source()
+            if video_name and SELENOID_VIDEO_URL:
+                attach_video(f"{SELENOID_VIDEO_URL.rstrip('/')}/{video_name}")
 
-    if video_name and SELENOID_VIDEO_URL:
-        attach_video(f"{SELENOID_VIDEO_URL.rstrip('/')}/{video_name}")
+    browser.quit()

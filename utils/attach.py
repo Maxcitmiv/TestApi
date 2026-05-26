@@ -15,7 +15,11 @@ def attach_screenshot() -> None:
         )
         return
 
-    allure.attach(png, name="screenshot", attachment_type=allure.attachment_type.PNG)
+    allure.attach(
+        png,
+        name="browser_screenshot",
+        attachment_type=allure.attachment_type.PNG,
+    )
 
 
 def attach_page_source() -> None:
@@ -29,7 +33,11 @@ def attach_page_source() -> None:
         )
         return
 
-    allure.attach(html, name="page_source", attachment_type=allure.attachment_type.HTML)
+    allure.attach(
+        html,
+        name="page_source",
+        attachment_type=allure.attachment_type.HTML,
+    )
 
 
 def attach_console_log() -> None:
@@ -41,7 +49,7 @@ def attach_console_log() -> None:
 
     allure.attach(
         formatted_logs,
-        name="console_log",
+        name="browser_console_log",
         attachment_type=allure.attachment_type.JSON,
     )
 
@@ -49,6 +57,6 @@ def attach_console_log() -> None:
 def attach_video(video_url: str) -> None:
     allure.attach(
         video_url,
-        name="video_url",
+        name="selenoid_video_url",
         attachment_type=allure.attachment_type.URI_LIST,
     )
